@@ -13,23 +13,34 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadUsers();
+    // Restore session from localStorage
+    const saved = localStorage.getItem("afk_current_user");
+    loadUsers(saved ? JSON.parse(saved) : null);
   }, []);
 
   useEffect(() => {
     if (currentUser) {
+      localStorage.setItem("afk_current_user", JSON.stringify(currentUser));
       loadSessions(currentUser);
+    } else {
+      localStorage.removeItem("afk_current_user");
     }
   }, [currentUser?.id]);
 
-  async function loadUsers() {
+  async function loadUsers(restoreUser: User | null = null) {
     setLoading(true);
     const { data, error } = await supabase
       .from("users")
       .select("*")
       .order("created_at", { ascending: true });
     if (!error && data) {
-      setUsers(data.map(dbUserToUser));
+      const mapped = data.map(dbUserToUser);
+      setUsers(mapped);
+      // Restore logged-in user if they still exist in DB
+      if (restoreUser) {
+        const found = mapped.find((u) => u.id === restoreUser.id);
+        if (found) setCurrentUser(found);
+      }
     }
     setLoading(false);
   }
@@ -82,6 +93,7 @@ export default function App() {
     setCurrentUser(null);
     setActiveAfkStart(null);
     setSessions([]);
+    localStorage.removeItem("afk_current_user");
   }
 
   async function handleAFK() {
