@@ -180,7 +180,7 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
         td { padding: 9px 12px; border-bottom: 1px solid #eee; }
         @media print { body { padding: 16px; } }
       </style></head><body>
-      <h1>🍄 AFK Tracker — Report</h1>
+      <h1>🍄 AFK ka ba? — Report</h1>
       <div class="meta">
         Period: <strong>${exportFrom}</strong> to <strong>${exportTo}</strong> &nbsp;|&nbsp;
         Player: <strong>${exportUser}</strong> &nbsp;|&nbsp;
@@ -271,7 +271,7 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
               className="mt-0.5 tracking-widest"
               style={{ color: "#e8e8e8", fontFamily: PIXEL, fontSize: "9px" }}
             >
-              AFK TRACKER
+              AFK KA BA?
             </div>
           </div>
         </div>

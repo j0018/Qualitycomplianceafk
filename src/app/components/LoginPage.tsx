@@ -77,10 +77,10 @@ export function LoginPage({ users, onLogin }: Props) {
           className="text-3xl leading-tight tracking-widest"
           style={{ color: "#f8b800", textShadow: "3px 3px 0px #e52222", fontFamily: PIXEL, fontSize: "22px" }}
         >
-          AFK TRACKER
+          AFK KA BA?
         </h1>
         <div className="mt-3 text-sm tracking-widest" style={{ color: "#5bba47", fontFamily: CLEAN, fontWeight: 600 }}>
-          ★ TIME TRACKING QUEST ★
+          ★ WHO'S AFK? ★
         </div>
       </div>
 
@@ -215,7 +215,7 @@ export function LoginPage({ users, onLogin }: Props) {
       </div>
 
       <div className="mt-6 text-xs tracking-widest" style={{ color: "#333", fontFamily: CLEAN }}>
-        © 2026 AFK TRACKER CO.
+        © 2026 AFK KA BA?
       </div>
     </div>
   );
