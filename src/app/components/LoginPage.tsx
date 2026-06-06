@@ -209,19 +209,7 @@ export function LoginPage({ users, onLogin }: Props) {
             >
               ▶ Join Quest
             </button>
-            <div className="text-xs text-center" style={{ color: "#555" }}>
-              Available codes (demo):
-              {inviteCodes.map((c) => (
-                <span
-                  key={c}
-                  className="block mt-1 cursor-pointer hover:underline font-semibold tracking-widest"
-                  style={{ color: "#5bba47" }}
-                  onClick={() => setInviteCode(c)}
-                >
-                  {c}
-                </span>
-              ))}
-            </div>
+
           </form>
         )}
       </div>
