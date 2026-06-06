@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { type User } from "./mockData";
+import { type User } from "../types";
 
 const PIXEL = "'Press Start 2P', monospace";
 const CLEAN = "'Exo 2', sans-serif";

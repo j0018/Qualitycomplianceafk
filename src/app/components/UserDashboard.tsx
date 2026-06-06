@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { type User, type Session, formatDuration, formatTime, formatDate } from "./mockData";
+import { type User, type Session, formatDuration, formatTime, formatDate } from "../types";
 
 const PIXEL = "'Press Start 2P', monospace";
 const CLEAN = "'Exo 2', sans-serif";

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { type User, type Session, formatDuration, formatTime, formatDate } from "./mockData";
+import { type User, type Session, formatDuration, formatTime, formatDate } from "../types";
 
 const PIXEL = "'Press Start 2P', monospace";
 const CLEAN = "'Exo 2', sans-serif";
@@ -40,6 +40,7 @@ type Props = {
   onLogout: () => void;
   onAddUser: (user: User) => void;
   onRemoveUser: (userId: string) => void;
+  onRefreshSessions?: () => void;
 };
 
 function generateInviteCode() {
@@ -55,7 +56,7 @@ type NewUserForm = {
   role: "user" | "admin";
 };
 
-export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveUser }: Props) {
+export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveUser, onRefreshSessions }: Props) {
   const [tab, setTab] = useState<Tab>("live");
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
   const [reportUserId, setReportUserId] = useState<string>(
