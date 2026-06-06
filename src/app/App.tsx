@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { LoginPage } from "./components/LoginPage";
 import { UserDashboard } from "./components/UserDashboard";
 import { AdminDashboard } from "./components/AdminDashboard";
+import { DesktopOnlyWall, useIsDesktop } from "./components/DesktopOnly";
 import { supabase } from "../lib/supabase";
 import { type User, type Session } from "./types";
 
 export default function App() {
+  const isDesktop = useIsDesktop();
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -157,6 +159,10 @@ export default function App() {
     await supabase.from("users").delete().eq("id", userId);
     setUsers((prev) => prev.filter((u) => u.id !== userId));
     setSessions((prev) => prev.filter((s) => s.userId !== userId));
+  }
+
+  if (!isDesktop) {
+    return <DesktopOnlyWall />;
   }
 
   if (loading) {
