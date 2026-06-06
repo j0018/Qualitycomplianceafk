@@ -56,6 +56,19 @@ type NewUserForm = {
   role: "user" | "admin";
 };
 
+// ── Helper: get Monday of current week
+function getWeekStart() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const mon = new Date(d.setDate(diff));
+  mon.setHours(0, 0, 0, 0);
+  return mon.toISOString().slice(0, 10);
+}
+function getToday() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveUser, onRefreshSessions }: Props) {
   const [tab, setTab] = useState<Tab>("live");
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
@@ -67,6 +80,11 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
   const [formError, setFormError] = useState("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+
+  // Export date range
+  const [exportFrom, setExportFrom] = useState(getWeekStart());
+  const [exportTo, setExportTo] = useState(getToday());
+  const [exportUserId, setExportUserId] = useState<string>("all");
 
   const regularUsers = users.filter((u) => u.role === "user");
   const completedSessions = sessions.filter((s) => s.backAt !== null);
@@ -91,6 +109,101 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
   const reportTotal = reportSessions.reduce((sum, s) => sum + (s.durationMs ?? 0), 0);
   const reportAvg = reportSessions.length > 0 ? reportTotal / reportSessions.length : 0;
   const reportLongest = reportSessions.length > 0 ? Math.max(...reportSessions.map((s) => s.durationMs ?? 0)) : 0;
+
+  // ── Export helpers
+  function getExportSessions() {
+    const from = new Date(exportFrom + "T00:00:00");
+    const to = new Date(exportTo + "T23:59:59");
+    return completedSessions.filter((s) => {
+      const inRange = s.afkAt >= from && s.afkAt <= to;
+      const inUser = exportUserId === "all" || s.userId === exportUserId;
+      return inRange && inUser;
+    }).sort((a, b) => a.afkAt.getTime() - b.afkAt.getTime());
+  }
+
+  function exportCSV() {
+    const rows = getExportSessions();
+    if (rows.length === 0) { alert("No sessions in selected range."); return; }
+    const header = ["Player", "Date", "AFK Start", "AFK End", "Duration (min)"];
+    const lines = rows.map((s) => {
+      const user = users.find((u) => u.id === s.userId);
+      return [
+        user?.name ?? "Unknown",
+        formatDate(s.afkAt),
+        formatTime(s.afkAt),
+        s.backAt ? formatTime(s.backAt) : "",
+        s.durationMs != null ? (s.durationMs / 60000).toFixed(1) : "",
+      ].map((v) => `"${v}"`).join(",");
+    });
+    const csv = [header.join(","), ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `afk-report-${exportFrom}-to-${exportTo}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportPDF() {
+    const rows = getExportSessions();
+    if (rows.length === 0) { alert("No sessions in selected range."); return; }
+
+    const exportUser = exportUserId === "all" ? "All Players" : (users.find(u => u.id === exportUserId)?.name ?? "");
+    const totalMs = rows.reduce((sum, s) => sum + (s.durationMs ?? 0), 0);
+
+    const tableRows = rows.map((s, i) => {
+      const user = users.find((u) => u.id === s.userId);
+      return `
+        <tr style="background:${i % 2 === 0 ? "#f9f9f9" : "#ffffff"}">
+          <td>${user?.name ?? "Unknown"}</td>
+          <td>${formatDate(s.afkAt)}</td>
+          <td>${formatTime(s.afkAt)}</td>
+          <td>${s.backAt ? formatTime(s.backAt) : "—"}</td>
+          <td>${s.durationMs != null ? formatDuration(s.durationMs) : "—"}</td>
+        </tr>`;
+    }).join("");
+
+    const html = `
+      <!DOCTYPE html><html><head><meta charset="utf-8">
+      <title>AFK Report</title>
+      <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 32px; color: #111; }
+        h1 { font-size: 22px; margin-bottom: 4px; }
+        .meta { color: #666; font-size: 13px; margin-bottom: 24px; }
+        .summary { display: flex; gap: 24px; margin-bottom: 24px; }
+        .stat { background: #f4f4f4; padding: 12px 20px; border-radius: 6px; }
+        .stat-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-value { font-size: 18px; font-weight: 700; margin-top: 4px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #111; color: #fff; padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+        td { padding: 9px 12px; border-bottom: 1px solid #eee; }
+        @media print { body { padding: 16px; } }
+      </style></head><body>
+      <h1>🍄 AFK Tracker — Report</h1>
+      <div class="meta">
+        Period: <strong>${exportFrom}</strong> to <strong>${exportTo}</strong> &nbsp;|&nbsp;
+        Player: <strong>${exportUser}</strong> &nbsp;|&nbsp;
+        Generated: ${new Date().toLocaleString()}
+      </div>
+      <div class="summary">
+        <div class="stat"><div class="stat-label">Total Sessions</div><div class="stat-value">${rows.length}</div></div>
+        <div class="stat"><div class="stat-label">Total AFK Time</div><div class="stat-value">${formatDuration(totalMs)}</div></div>
+        <div class="stat"><div class="stat-label">Avg per Session</div><div class="stat-value">${rows.length > 0 ? formatDuration(totalMs / rows.length) : "—"}</div></div>
+      </div>
+      <table>
+        <thead><tr><th>Player</th><th>Date</th><th>AFK Start</th><th>AFK End</th><th>Duration</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      </body></html>`;
+
+    const win = window.open("", "_blank");
+    if (!win) { alert("Allow popups to export PDF."); return; }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 400);
+  }
 
   const TABS: { id: Tab; label: string; icon: string }[] = [
     { id: "live", label: "Live Status", icon: "🔴" },
@@ -418,41 +531,28 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
         {/* ── REPORTS ── */}
         {tab === "reports" && (
           <div>
-            <div
-              className="p-5 mb-6"
-              style={{ background: "#111", border: "2px solid #1e1e1e" }}
-            >
+            {/* ── Overview chart ── */}
+            <div className="p-5 mb-6" style={{ background: "#111", border: "2px solid #1e1e1e" }}>
               <div className="text-sm font-bold tracking-wide uppercase mb-4" style={{ color: "#f8b800" }}>
                 ★ Total AFK Time — All Players
               </div>
               <ResponsiveContainer width="100%" height={160}>
                 <BarChart data={chartData} barCategoryGap="35%">
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fill: "#666", fontSize: 12, fontFamily: CLEAN }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
+                  <XAxis dataKey="name" tick={{ fill: "#666", fontSize: 12, fontFamily: CLEAN }} axisLine={false} tickLine={false} />
                   <YAxis hide />
                   <Tooltip content={<PixelTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
                   <Bar dataKey="totalMs" radius={0}>
-                    {chartData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
+                    {chartData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
 
-            {/* Player selector */}
+            {/* ── Player detail ── */}
             <div className="flex items-center gap-3 mb-5 flex-wrap">
-              <span className="text-sm font-semibold uppercase tracking-wide" style={{ color: "#888" }}>
-                Player:
-              </span>
+              <span className="text-sm font-semibold uppercase tracking-wide" style={{ color: "#888" }}>Player:</span>
               {regularUsers.map((u, i) => (
-                <button
-                  key={u.id}
-                  onClick={() => setReportUserId(u.id)}
+                <button key={u.id} onClick={() => setReportUserId(u.id)}
                   className="px-4 py-1.5 text-sm font-semibold uppercase tracking-wide transition-colors"
                   style={{
                     background: reportUserId === u.id ? COLORS[i % COLORS.length] : "#1e1e1e",
@@ -467,56 +567,33 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
             </div>
 
             {reportUser && (
-              <div>
-                <div className="grid grid-cols-2 gap-3 mb-5" style={{ gridTemplateColumns: "repeat(4,1fr)" }}>
+              <div className="mb-8">
+                <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: "repeat(4,1fr)" }}>
                   {[
                     { label: "Total AFK", value: formatDuration(reportTotal), icon: "⏱" },
                     { label: "Sessions", value: `${reportSessions.length}`, icon: "🎮" },
                     { label: "Avg Session", value: formatDuration(reportAvg), icon: "📊" },
                     { label: "Longest AFK", value: formatDuration(reportLongest), icon: "💤" },
                   ].map((stat) => (
-                    <div
-                      key={stat.label}
-                      className="p-4"
-                      style={{
-                        background: "#111",
-                        border: "2px solid #1e1e1e",
-                        boxShadow: "3px 3px 0 #f8b800",
-                      }}
-                    >
+                    <div key={stat.label} className="p-4" style={{ background: "#111", border: "2px solid #1e1e1e", boxShadow: "3px 3px 0 #f8b800" }}>
                       <div className="text-xl mb-2">{stat.icon}</div>
-                      <div className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "#666" }}>
-                        {stat.label}
-                      </div>
-                      <div className="text-base font-bold" style={{ color: "#f8b800" }}>
-                        {stat.value}
-                      </div>
+                      <div className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "#666" }}>{stat.label}</div>
+                      <div className="text-base font-bold" style={{ color: "#f8b800" }}>{stat.value}</div>
                     </div>
                   ))}
                 </div>
-
                 <div className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: "#888" }}>
                   Session History — {reportUser.name}
                 </div>
                 <div style={{ border: "2px solid #1e1e1e" }}>
                   {reportSessions.length === 0 && (
-                    <div className="text-sm text-center py-6" style={{ color: "#444" }}>
-                      No sessions yet
-                    </div>
+                    <div className="text-sm text-center py-6" style={{ color: "#444" }}>No sessions yet</div>
                   )}
                   {reportSessions.map((s, i) => (
-                    <div
-                      key={s.id}
-                      className="flex items-center justify-between px-4 py-3"
-                      style={{
-                        background: i % 2 === 0 ? "#0e0e0e" : "#111111",
-                        borderBottom: "1px solid #191919",
-                      }}
-                    >
+                    <div key={s.id} className="flex items-center justify-between px-4 py-3"
+                      style={{ background: i % 2 === 0 ? "#0e0e0e" : "#111111", borderBottom: "1px solid #191919" }}>
                       <div>
-                        <div className="text-xs font-medium" style={{ color: "#666" }}>
-                          {formatDate(s.afkAt)}
-                        </div>
+                        <div className="text-xs font-medium" style={{ color: "#666" }}>{formatDate(s.afkAt)}</div>
                         <div className="text-sm mt-0.5" style={{ color: "#e8e8e8" }}>
                           {formatTime(s.afkAt)} → {s.backAt ? formatTime(s.backAt) : "..."}
                         </div>
@@ -529,6 +606,110 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
                 </div>
               </div>
             )}
+
+            {/* ── Export section ── */}
+            <div className="p-5" style={{ background: "#111", border: "2px solid #f8b800", boxShadow: "4px 4px 0 #f8b800" }}>
+              <div className="text-sm font-bold tracking-wide uppercase mb-5" style={{ color: "#f8b800", fontFamily: CLEAN }}>
+                ★ Export Report
+              </div>
+
+              <div className="flex flex-wrap gap-5 mb-5 items-end">
+                {/* From */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: "#888" }}>From</label>
+                  <input
+                    type="date"
+                    value={exportFrom}
+                    onChange={(e) => setExportFrom(e.target.value)}
+                    className="px-3 py-2 text-sm outline-none"
+                    style={{ background: "#1a1a1a", border: "2px solid #2a2a2a", color: "#e8e8e8", fontFamily: CLEAN, colorScheme: "dark" }}
+                  />
+                </div>
+                {/* To */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: "#888" }}>To</label>
+                  <input
+                    type="date"
+                    value={exportTo}
+                    onChange={(e) => setExportTo(e.target.value)}
+                    className="px-3 py-2 text-sm outline-none"
+                    style={{ background: "#1a1a1a", border: "2px solid #2a2a2a", color: "#e8e8e8", fontFamily: CLEAN, colorScheme: "dark" }}
+                  />
+                </div>
+                {/* Player filter */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: "#888" }}>Player</label>
+                  <select
+                    value={exportUserId}
+                    onChange={(e) => setExportUserId(e.target.value)}
+                    className="px-3 py-2 text-sm outline-none"
+                    style={{ background: "#1a1a1a", border: "2px solid #2a2a2a", color: "#e8e8e8", fontFamily: CLEAN }}
+                  >
+                    <option value="all">All Players</option>
+                    {regularUsers.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Quick presets */}
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    {
+                      label: "This Week", onClick: () => {
+                        setExportFrom(getWeekStart());
+                        setExportTo(getToday());
+                      }
+                    },
+                    {
+                      label: "This Month", onClick: () => {
+                        const d = new Date();
+                        setExportFrom(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
+                        setExportTo(getToday());
+                      }
+                    },
+                    {
+                      label: "Last Month", onClick: () => {
+                        const d = new Date();
+                        const first = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+                        const last = new Date(d.getFullYear(), d.getMonth(), 0);
+                        setExportFrom(first.toISOString().slice(0, 10));
+                        setExportTo(last.toISOString().slice(0, 10));
+                      }
+                    },
+                  ].map((p) => (
+                    <button key={p.label} onClick={p.onClick}
+                      className="px-3 py-2 text-xs font-semibold uppercase tracking-wide"
+                      style={{ background: "#1a1a1a", color: "#888", border: "1px solid #333", fontFamily: CLEAN }}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Export buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={exportCSV}
+                  className="px-6 py-3 text-sm font-bold uppercase tracking-widest transition-all active:translate-y-0.5"
+                  style={{ background: "#5bba47", color: "#fff", border: "2px solid #7ddd67", boxShadow: "0 4px 0 #2d6b1f", fontFamily: CLEAN }}
+                >
+                  ↓ Export CSV
+                </button>
+                <button
+                  onClick={exportPDF}
+                  className="px-6 py-3 text-sm font-bold uppercase tracking-widest transition-all active:translate-y-0.5"
+                  style={{ background: "#049cd8", color: "#fff", border: "2px solid #2cc0ff", boxShadow: "0 4px 0 #025a80", fontFamily: CLEAN }}
+                >
+                  ↓ Export PDF
+                </button>
+              </div>
+
+              <div className="mt-3 text-xs" style={{ color: "#555" }}>
+                PDF opens a print dialog — save as PDF from there. CSV opens directly in Excel.
+              </div>
+            </div>
           </div>
         )}
 
