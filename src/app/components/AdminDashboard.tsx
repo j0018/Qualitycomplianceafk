@@ -69,6 +69,39 @@ function getToday() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function getToday() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ── Helper: local YYYY-MM-DD (avoids UTC off-by-one that toISOString() causes)
+function toLocalDateStr(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// ── Helper: "shift day" a session belongs to. Graveyard shifts start
+// in the evening and cross midnight, so anything logged before noon
+// still belongs to the shift that started the night before.
+const SHIFT_CUTOFF_HOUR = 12; // sessions before this hour roll back to the previous day
+function getShiftDay(date: Date) {
+  const d = new Date(date);
+  if (d.getHours() < SHIFT_CUTOFF_HOUR) d.setDate(d.getDate() - 1);
+  return toLocalDateStr(d);
+}
+
+// ── Helper: average total AFK time per shift day for a set of sessions
+function getDailyAverage(sessionList: Session[]) {
+  const byDay = new Map<string, number>();
+  for (const s of sessionList) {
+    const day = getShiftDay(s.afkAt);
+    byDay.set(day, (byDay.get(day) ?? 0) + (s.durationMs ?? 0));
+  }
+  const totals = Array.from(byDay.values());
+  const dayCount = totals.length;
+  const avgMs = dayCount > 0 ? totals.reduce((sum, v) => sum + v, 0) / dayCount : 0;
+  return { avgMs, dayCount };
+}
+
+
 export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveUser, onRefreshSessions }: Props) {
   const [tab, setTab] = useState<Tab>("live");
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
@@ -109,7 +142,7 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
   const reportTotal = reportSessions.reduce((sum, s) => sum + (s.durationMs ?? 0), 0);
   const reportAvg = reportSessions.length > 0 ? reportTotal / reportSessions.length : 0;
   const reportLongest = reportSessions.length > 0 ? Math.max(...reportSessions.map((s) => s.durationMs ?? 0)) : 0;
-
+  const { avgMs: reportDailyAvg, dayCount: reportDayCount } = getDailyAverage(reportSessions);
   // ── Export helpers
   function getExportSessions() {
     const from = new Date(exportFrom + "T00:00:00");
@@ -151,6 +184,7 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
 
     const exportUser = exportUserId === "all" ? "All Players" : (users.find(u => u.id === exportUserId)?.name ?? "");
     const totalMs = rows.reduce((sum, s) => sum + (s.durationMs ?? 0), 0);
+    const { avgMs: dailyAvgMs, dayCount: dailyCount } = getDailyAverage(rows);
 
     const tableRows = rows.map((s, i) => {
       const user = users.find((u) => u.id === s.userId);
@@ -190,6 +224,7 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
         <div class="stat"><div class="stat-label">Total Sessions</div><div class="stat-value">${rows.length}</div></div>
         <div class="stat"><div class="stat-label">Total AFK Time</div><div class="stat-value">${formatDuration(totalMs)}</div></div>
         <div class="stat"><div class="stat-label">Avg per Session</div><div class="stat-value">${rows.length > 0 ? formatDuration(totalMs / rows.length) : "—"}</div></div>
+        <div class="stat"><div class="stat-label">Avg per Shift (${dailyCount} shift${dailyCount === 1 ? "" : "s"})</div><div class="stat-value">${dailyCount > 0 ? formatDuration(dailyAvgMs) : "—"}</div></div>
       </div>
       <table>
         <thead><tr><th>Player</th><th>Date</th><th>AFK Start</th><th>AFK End</th><th>Duration</th></tr></thead>
@@ -568,13 +603,14 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
 
             {reportUser && (
               <div className="mb-8">
-                <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: "repeat(4,1fr)" }}>
-                  {[
-                    { label: "Total AFK", value: formatDuration(reportTotal), icon: "⏱" },
-                    { label: "Sessions", value: `${reportSessions.length}`, icon: "🎮" },
-                    { label: "Avg Session", value: formatDuration(reportAvg), icon: "📊" },
-                    { label: "Longest AFK", value: formatDuration(reportLongest), icon: "💤" },
-                  ].map((stat) => (
+                <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: "repeat(5,1fr)" }}>
+  {[
+    { label: "Total AFK", value: formatDuration(reportTotal), icon: "⏱" },
+    { label: "Sessions", value: `${reportSessions.length}`, icon: "🎮" },
+    { label: "Avg Session", value: formatDuration(reportAvg), icon: "📊" },
+    { label: "Avg per Shift", value: reportDayCount > 0 ? formatDuration(reportDailyAvg) : "—", icon: "🌙" },
+    { label: "Longest AFK", value: formatDuration(reportLongest), icon: "💤" },
+  ].map((stat) => (
                     <div key={stat.label} className="p-4" style={{ background: "#111", border: "2px solid #1e1e1e", boxShadow: "3px 3px 0 #f8b800" }}>
                       <div className="text-xl mb-2">{stat.icon}</div>
                       <div className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "#666" }}>{stat.label}</div>
