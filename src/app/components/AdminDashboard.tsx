@@ -65,9 +65,6 @@ function getWeekStart() {
   mon.setHours(0, 0, 0, 0);
   return mon.toISOString().slice(0, 10);
 }
-function getToday() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function getToday() {
   return new Date().toISOString().slice(0, 10);
