@@ -47,15 +47,3 @@ create policy "public read sessions"   on public.sessions   for select using (tr
 create policy "public insert sessions" on public.sessions   for insert with check (true);
 create policy "public update sessions" on public.sessions   for update using (true);
 create policy "public delete sessions" on public.sessions   for delete using (true);
-
--- ============================================================
--- Seed Data — default admin + sample users
--- (Change passwords before going live!)
--- ============================================================
-
-insert into public.users (id, name, username, password, role, invite_code, avatar_color) values
-  ('admin-1', 'Admin',             'admin', 'admin123',  'admin', null,        '#e52222'),
-  ('user-1',  'Luigi Verde',       'luigi', 'luigi123',  'user',  'INV-LUIGI', '#5bba47'),
-  ('user-2',  'Princess Toadstool','peach', 'peach123',  'user',  'INV-PEACH', '#f8b800'),
-  ('user-3',  'Toad Runner',       'toad',  'toad123',   'user',  'INV-TOAD',  '#049cd8')
-on conflict (id) do nothing;
