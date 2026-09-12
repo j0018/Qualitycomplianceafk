@@ -6,6 +6,7 @@ const PIXEL = "'Press Start 2P', monospace";
 const CLEAN = "'Exo 2', sans-serif";
 const COLORS = ["#e52222", "#5bba47", "#049cd8", "#f8b800", "#a020f0"];
 const AVATAR_COLORS = ["#5bba47", "#049cd8", "#f8b800", "#a020f0", "#ff6600", "#00cccc"];
+const LOGS_PAGE_SIZE = 15;
 
 type Tab = "live" | "logs" | "reports" | "invites";
 
@@ -17,6 +18,45 @@ function PixelTooltip({ active, payload }: { active?: boolean; payload?: { value
       style={{ background: "#111", border: "2px solid #f8b800", color: "#f8b800", fontFamily: CLEAN }}
     >
       {formatDuration(payload[0].value)}
+    </div>
+  );
+}
+
+function Pager({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-center gap-3 mt-4">
+      <button
+        onClick={() => onChange(page - 1)}
+        disabled={page <= 1}
+        className="px-3 py-1.5 text-xs font-bold uppercase tracking-wide"
+        style={{
+          background: page <= 1 ? "#151515" : "#1e1e1e",
+          color: page <= 1 ? "#444" : "#e8e8e8",
+          border: "1px solid #333",
+          fontFamily: CLEAN,
+          cursor: page <= 1 ? "default" : "pointer",
+        }}
+      >
+        ← Prev
+      </button>
+      <span className="text-xs font-semibold" style={{ color: "#888", fontFamily: CLEAN }}>
+        Page {page} of {totalPages}
+      </span>
+      <button
+        onClick={() => onChange(page + 1)}
+        disabled={page >= totalPages}
+        className="px-3 py-1.5 text-xs font-bold uppercase tracking-wide"
+        style={{
+          background: page >= totalPages ? "#151515" : "#1e1e1e",
+          color: page >= totalPages ? "#444" : "#e8e8e8",
+          border: "1px solid #333",
+          fontFamily: CLEAN,
+          cursor: page >= totalPages ? "default" : "pointer",
+        }}
+      >
+        Next →
+      </button>
     </div>
   );
 }
@@ -111,10 +151,17 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
 
-  // Export date range
+    // Export date range
   const [exportFrom, setExportFrom] = useState(getWeekStart());
   const [exportTo, setExportTo] = useState(getToday());
   const [exportUserId, setExportUserId] = useState<string>("all");
+
+  // Pagination
+  const [logsPage, setLogsPage] = useState(1);
+  const [reportsPage, setReportsPage] = useState(1);
+
+  useEffect(() => { setLogsPage(1); }, [selectedUserId]);
+  useEffect(() => { setReportsPage(1); }, [reportUserId]);
 
   const regularUsers = users.filter((u) => u.role === "user");
   const completedSessions = sessions.filter((s) => s.backAt !== null);
@@ -125,6 +172,8 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
       ? completedSessions
       : completedSessions.filter((s) => s.userId === selectedUserId);
   const sortedLogs = [...filteredLogs].sort((a, b) => b.afkAt.getTime() - a.afkAt.getTime());
+  const logsTotalPages = Math.max(1, Math.ceil(sortedLogs.length / LOGS_PAGE_SIZE));
+  const pagedLogs = sortedLogs.slice((logsPage - 1) * LOGS_PAGE_SIZE, logsPage * LOGS_PAGE_SIZE);
 
   const chartData = regularUsers.map((u, i) => {
     const userSessions = completedSessions.filter((s) => s.userId === u.id);
@@ -140,6 +189,8 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
   const reportAvg = reportSessions.length > 0 ? reportTotal / reportSessions.length : 0;
   const reportLongest = reportSessions.length > 0 ? Math.max(...reportSessions.map((s) => s.durationMs ?? 0)) : 0;
   const { avgMs: reportDailyAvg, dayCount: reportDayCount } = getDailyAverage(reportSessions);
+  const reportsTotalPages = Math.max(1, Math.ceil(reportSessions.length / LOGS_PAGE_SIZE));
+  const pagedReportSessions = reportSessions.slice((reportsPage - 1) * LOGS_PAGE_SIZE, reportsPage * LOGS_PAGE_SIZE);
   // ── Export helpers
   function getExportSessions() {
     const from = new Date(exportFrom + "T00:00:00");
@@ -528,7 +579,7 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
                   No logs found
                 </div>
               )}
-              {sortedLogs.map((s, i) => {
+              {pagedLogs.map((s, i) => {
                 const u = users.find((u) => u.id === s.userId);
                 const uIdx = regularUsers.findIndex((u) => u.id === s.userId);
                 return (
@@ -553,10 +604,11 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
                   </div>
                 );
               })}
-            </div>
+             </div>
             <div className="mt-3 text-xs" style={{ color: "#444" }}>
               {sortedLogs.length} records
             </div>
+            <Pager page={logsPage} totalPages={logsTotalPages} onChange={setLogsPage} />
           </div>
         )}
 
@@ -620,9 +672,9 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
                 </div>
                 <div style={{ border: "2px solid #1e1e1e" }}>
                   {reportSessions.length === 0 && (
-                    <div className="text-sm text-center py-6" style={{ color: "#444" }}>No sessions yet</div>
-                  )}
-                  {reportSessions.map((s, i) => (
+                <div className="text-sm text-center py-6" style={{ color: "#444" }}>No sessions yet</div>
+                    )}
+                {pagedReportSessions.map((s, i) => (
                     <div key={s.id} className="flex items-center justify-between px-4 py-3"
                       style={{ background: i % 2 === 0 ? "#0e0e0e" : "#111111", borderBottom: "1px solid #191919" }}>
                       <div>
@@ -634,9 +686,10 @@ export function AdminDashboard({ users, sessions, onLogout, onAddUser, onRemoveU
                       <div className="text-base font-bold" style={{ color: "#5bba47" }}>
                         {s.durationMs != null ? formatDuration(s.durationMs) : "Active"}
                       </div>
-                    </div>
+                     </div>
                   ))}
                 </div>
+                <Pager page={reportsPage} totalPages={reportsTotalPages} onChange={setReportsPage} />
               </div>
             )}
 
