@@ -6,7 +6,32 @@
 <br> 
 <p>What began as a lightweight data-tracking spreadsheet has evolved into a fully responsive web application, with active development underway to expand into a multi-tenant client-server architecture featuring tailored Work and Study environments.</p>
 
-<h2>Evolution and Roadmap</h2><br>
+<h2>Evolution and Roadmap</h2>
+
+## Technical Evolution & Roadmap
+
+```mermaid
+graph TD
+    subgraph Phase 1: Origin (Spreadsheet Prototype)
+        A[Google Sheets + Apps Script] -->|Manual Export| B[Formula/Cell Bottlenecks]
+    end
+
+    subgraph Phase 2: Current Web Platform
+        B --> C[React + TypeScript Frontend]
+        C --> D[Shadcn UI + Tailwind CSS]
+        C --> E[Supabase Client & RLS Backend]
+        
+        subgraph Role-Based Modules
+            C --> F[User Dashboard]
+            C --> G[Admin/Supervisor Panel]
+        end
+    end
+
+    subgraph Phase 3: Planned Platform Expansion
+        C --> H[Work Mode Engine]
+        C --> I[Study / Focus Mode Engine]
+        E --> J[Real-time WebSockets Engine]
+    end
 
 ### Phase 1: The Origin (Spreadsheet Prototype)
 * **Goal:** Create a lightweight, real-time availability and activity logging tool to help management balance workloads, track context switching (e.g., active vs. away states), and consolidate automated timesheets.
