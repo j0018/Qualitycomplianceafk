@@ -12,22 +12,22 @@ What began as a lightweight data-tracking spreadsheet has evolved into a fully r
 
 ```mermaid
 graph TD
-    subgraph Phase 1: Origin (Spreadsheet Prototype)
+    subgraph "Phase 1: Origin (Spreadsheet Prototype)"
         A[Google Sheets + Apps Script] -->|Manual Export| B[Formula/Cell Bottlenecks]
     end
 
-    subgraph Phase 2: Current Web Platform
+    subgraph "Phase 2: Current Web Platform"
         B --> C[React + TypeScript Frontend]
         C --> D[Shadcn UI + Tailwind CSS]
         C --> E[Supabase Client & RLS Backend]
         
-        subgraph Role-Based Modules
+        subgraph "Role-Based Modules"
             C --> F[User Dashboard]
             C --> G[Admin/Supervisor Panel]
         end
     end
 
-    subgraph Phase 3: Planned Platform Expansion
+    subgraph "Phase 3: Planned Platform Expansion"
         C --> H[Work Mode Engine]
         C --> I[Study / Focus Mode Engine]
         E --> J[Real-time WebSockets Engine]
