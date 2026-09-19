@@ -33,7 +33,7 @@ graph TD
         E --> J[Real-time WebSockets Engine]
     end
 
-
+```
 
 ### Phase 1: The Origin (Spreadsheet Prototype)
 * **Goal:** Create a lightweight, real-time availability and activity logging tool to help management balance workloads, track context switching (e.g., active vs. away states), and consolidate automated timesheets.
