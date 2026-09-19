@@ -8,7 +8,7 @@
 
 <h2>Evolution and Roadmap</h2><br>
 
-<h3>Phase 1: Spreadsheet Prototype </h3>
+### Phase 1: The Origin (Spreadsheet Prototype)
 * **Goal:** Create a lightweight, real-time availability and activity logging tool to help management balance workloads, track context switching (e.g., active vs. away states), and consolidate automated timesheets.
 * **Implementation:** Built using Google Sheets, integrated Apps Script macros (interactive "AFK" and "Return" action buttons), automated timesheet tab generation, and cell-level permissions for supervisory reporting.
 * **Key Limitations & Technical Pivot Points:**
