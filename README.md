@@ -38,6 +38,11 @@ graph TD
 ### Phase 1: The Origin (Spreadsheet Prototype)
 * **Goal:** Create a lightweight, real-time availability and activity logging tool to help management balance workloads, track context switching (e.g., active vs. away states), and consolidate automated timesheets.
 * **Implementation:** Built using Google Sheets, integrated Apps Script macros (interactive "AFK" and "Back" action buttons), automated timesheet tab generation, and cell-level permissions for supervisory reporting.
+
+
+![Google Sheets AFK Tracker](./assets/sheet-dashboard-main.png)
+
+
 * **Key Limitations & Technical Pivot Points:**
   * **Data Integrity Hazards:** Even with sheet protection, cell protection in Google Sheets could be bypassed or broken by bulk copy-pasting, exposing logs to accidental tampering.
   * **State Synchronization Latency:** Using Google Apps Script buttons created execution delays (2–5 seconds per state change), causing race conditions when multiple users toggled status simultaneously.
