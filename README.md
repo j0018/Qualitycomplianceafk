@@ -52,6 +52,9 @@ graph TD
 ### Phase 2: The Web App (Current Stage)
 * **Goal:** Re-architect the prototype into an event-driven web application to eliminate latency, secure user logs, and deliver dynamic role-based dashboards.
 * **Implementation:** Built using React, TypeScript, Tailwind CSS, and Shadcn UI, with Supabase integration for Row-Level Security (RLS) data persistence.
+
+![AFK ka ba?](./assets/web-afk-tracker.png)
+
 * **Key Solutions Introduced:**
   * **Zero-Latency State Switching:** Replaced slow Apps Script execution with instant client-side status toggles ("Active" vs. "AFK").
   * **Role-Based Access Control (RBAC):** Built distinct interfaces for Employees (personal time tracking) and Supervisors/Admins (team compliance monitoring and analytics).
